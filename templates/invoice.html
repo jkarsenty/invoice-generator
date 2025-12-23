@@ -46,8 +46,8 @@
             <p class="name">{{ client.name }}</p>
             <p>{{ client.address }}</p>
             <p>SIREN / SIRET : {{ client.siren }}</p>
-            {% if client.vat %}
-            <p>TVA : {{ client.vat }}</p>
+            {% if client.vat_number %}
+            <p>TVA : {{ client.vat_number }}</p>
             {% endif %}
         </div>
 
@@ -58,7 +58,9 @@
             <p>{{ issuer.email }}</p>
             <p>{{ issuer.phone }}</p>
             <p>SIREN : {{ issuer.siren }}</p>
-            <p>TVA : {{ issuer.vat }}</p>
+            {% if issuer.vat_number %}
+            <p>TVA : {{ issuer.vat_number }}</p>
+            {% endif %}
         </div>
 
     </section>

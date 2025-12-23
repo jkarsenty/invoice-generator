@@ -1,10 +1,8 @@
 {
-    "client_id": "id_client_example",
     "number": "INV-2025-0001",
     "issue_date": "2025-01-15",
-    "service_date": "janvier 2025",
+    "service_date": "2025-01-01",
     "due_date": "2025-02-15",
-    "currency": "EUR",
     "vat_rate": 0,
     "items": [
         {
@@ -25,6 +23,5 @@
             "quantity": 3,
             "unit_price": 150
         }
-    ],
-    "notes": "Merci pour votre confiance."
+    ]
 }

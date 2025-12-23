@@ -3,7 +3,6 @@
     "name": "Demo Client",
     "address": "25 avenue Exemple, 69000 Lyon, France",
     "siren": "1234567890",
-    "vat": "FR11111111111",
-    "company": "Client Company",
+    "vat_number": "FR11111111111",
     "email": "billing@client-company.test"
 }

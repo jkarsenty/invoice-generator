@@ -5,7 +5,7 @@
     "email": "issuer@example.com",
     "phone": "+33 1 23 45 67 89",
     "siren": "1234567890",
-    "vat": "FR12345678901",
+    "vat_number": "FR12345678901",
     "payment_method": "Virements bancaires",
     "iban": "FR7612345987650123456789014",
     "bic": "BICEXAMPLE"

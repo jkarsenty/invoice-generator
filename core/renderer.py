@@ -2,9 +2,9 @@ from pathlib import Path
 from jinja2 import Environment, FileSystemLoader
 from weasyprint import HTML
 
-from core.loader import load_json
 from core.calculator import compute_items, compute_totals
 from core.formatter import eur
+from core.validate import ValidationError, as_dict, load_and_validate
 
 
 def render_invoice(
@@ -14,10 +14,19 @@ def render_invoice(
     base_dir: Path
 ):
     
-    # LOAD JSON 
-    issuer = load_json(base_dir / "config" / "issuer.example.json")
-    client = load_json(client_path)
-    invoice_data = load_json(invoice_path)
+    # LOAD + VALIDATE JSON
+    try:
+        issuer_obj, client_obj, invoice_obj = load_and_validate(
+        issuer_path=base_dir / "config" / "issuer.json",
+            client_path=client_path,
+            invoice_path=invoice_path
+        )
+    except ValidationError as exc:
+        raise SystemExit(str(exc))
+
+    issuer = as_dict(issuer_obj)
+    client = as_dict(client_obj)
+    invoice_data = as_dict(invoice_obj)
 
     # PREPARE ITEMS
     items, total_ht = compute_items(invoice_data["items"])
