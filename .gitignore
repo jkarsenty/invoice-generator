@@ -1,0 +1,79 @@
+# ======================
+# Python generated files
+# ======================
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# ======================
+# Virtual environments
+# ======================
+venv/
+.venv/
+env/
+env.bak/
+venv.bak/
+.Python-version
+.python-version
+
+# ======================
+# IDE / Editors
+# ======================
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# ======================
+# uv
+# ======================
+.uv/
+.venv_uv/
+uv.lock
+
+# ======================
+# Config (sensitive)
+# ======================
+config/*.json
+!config/*.example.json
+
+# ======================
+# Clients (sensitive)
+# ======================
+clients/*.json
+!clients/*.example.json
+
+# ======================
+# Invoices (sensitive)
+# ======================
+invoices/*.json
+!invoices/*.example.json
+
+# ======================
+# Assets (logos, images)
+# ======================
+assets/*
+!assets/*.example.png
+!assets/*.example.jpg
+!assets/*.example.jpeg
+
+# ======================
+# Output (generated files)
+# ======================
+output/*
+!output/.gitkeep
+*.pdf
+
+# ======================
+# Personal notes
+# ======================
+notes/
+notes_*
+
+# ======================
+# Privacy stash
+# ======================
+privacy/

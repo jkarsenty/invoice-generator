@@ -1,0 +1,233 @@
+/* ================= PAGE A4 ================= */
+@page {
+    size: A4;
+    margin: 18mm 18mm;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+/* ================= BASE ================= */
+body {
+    font-family: "Helvetica", "Arial", sans-serif;
+    font-size: 11.5px;
+    color: #1f2933;
+    margin: 0;
+}
+
+h1,
+h2 {
+    margin: 0;
+}
+
+h2 {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: #1f3a5f;
+}
+
+p {
+    margin: 3px 0;
+    line-height: 1.45;
+}
+
+/* ================= HEADER ================= */
+.header {
+    margin-bottom: 25px;
+}
+
+.header-brand {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+}
+
+.logo {
+    height: 110px;
+}
+
+.company-name {
+    font-size: 20px;
+    font-weight: 700;
+    color: #1f3a5f;
+    line-height: 1.1;
+}
+
+/* ================= INFOS FACTURE ================= */
+.invoice-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 25px;
+}
+
+/* Colonne gauche : FACTURE + numéro */
+.invoice-left {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.invoice-title {
+    border: 2.5px solid #1f3a5f;
+    color: #1f3a5f;
+    padding: 8px 18px;
+    font-weight: 800;
+    font-size: 16px;
+    letter-spacing: 2px;
+    width: fit-content;
+}
+
+/* Numéro de facture */
+.invoice-number {
+    background-color: #eef2f7;
+    color: #1f3a5f;
+    font-weight: 700;
+    padding: 6px 12px;
+    border-radius: 4px;
+    border-left: 4px solid #1f3a5f;
+    font-size: 11.5px;
+}
+
+/* Colonne droite : dates */
+.invoice-details {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 11.2px;
+}
+
+.invoice-details div {
+    background-color: #eef2f7;
+    padding: 6px 10px;
+    border-radius: 4px;
+    color: #1f2933;
+}
+
+/* ================= CLIENT / PRESTATAIRE ================= */
+.parties {
+    display: flex;
+    justify-content: space-between;
+    gap: 30px;
+    margin-bottom: 35px;
+}
+
+.party,
+.client,
+.issuer {
+    width: 50%;
+    background-color: #f5f7fa;
+    padding: 14px;
+    border-radius: 5px;
+}
+
+/* Titres CLIENT / PRESTATAIRE */
+.party h2,
+.client h2,
+.issuer h2 {
+    font-size: 13.5px;
+    font-weight: 800;
+    color: #1f3a5f;
+    border-bottom: 2px solid #1f3a5f;
+    padding-bottom: 5px;
+    margin-bottom: 10px;
+}
+
+/* Nom client / société */
+.party .name,
+.client .name,
+.issuer .name {
+    font-weight: 700;
+    margin-bottom: 6px;
+    color: #111827;
+}
+
+/* ================= TABLEAU PRESTATIONS ================= */
+.items {
+    margin-bottom: 20px;
+}
+
+.items-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+}
+
+.items-table th,
+.items-table td {
+    border: 1px solid #d1d5db;
+    padding: 7px 8px;
+    vertical-align: top;
+}
+
+.items-table th {
+    background-color: #1f3a5f;
+    color: #ffffff;
+    font-weight: 600;
+    text-align: left;
+}
+
+.items-table .number {
+    text-align: right;
+    white-space: nowrap;
+}
+
+.items-table .description {
+    width: 45%;
+}
+
+/* ================= TOTAUX ================= */
+.totals {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 25px;
+}
+
+.totals table {
+    width: 290px;
+    border-collapse: collapse;
+    font-size: 11.5px;
+}
+
+.totals td {
+    padding: 7px 8px;
+}
+
+.totals .number {
+    text-align: right;
+}
+
+.totals tr:not(.total-ttc) td {
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.totals .total-ttc td {
+    border-top: 2.5px solid #1f3a5f;
+    font-weight: 800;
+    color: #1f3a5f;
+}
+
+/* ================= PAIEMENT ================= */
+.payment {
+    background-color: #f5f7fa;
+    padding: 8px 12px;
+    margin-bottom: 15px;
+    font-size: 10px;
+}
+
+.payment h2 {
+    margin-bottom: 4px;
+}
+
+/* ================= FOOTER ================= */
+.footer {
+    position: fixed;
+    bottom: 15mm;
+    left: 20mm;
+    right: 20mm;
+    text-align: center;
+    font-size: 9px;
+    color: #6b7280;
+}

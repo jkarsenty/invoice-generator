@@ -1,0 +1,30 @@
+{
+    "client_id": "id_client_example",
+    "number": "INV-2025-0001",
+    "issue_date": "2025-01-15",
+    "service_date": "janvier 2025",
+    "due_date": "2025-02-15",
+    "currency": "EUR",
+    "vat_rate": 0,
+    "items": [
+        {
+            "date": "2025-01-10",
+            "description": "Développement application web",
+            "quantity": 5,
+            "unit_price": 600
+        },
+        {
+            "date": "2025-01-12",
+            "description": "Conception UI / UX",
+            "quantity": 2,
+            "unit_price": 450
+        },
+        {
+            "date": "2025-01-15",
+            "description": "Maintenance et support",
+            "quantity": 3,
+            "unit_price": 150
+        }
+    ],
+    "notes": "Merci pour votre confiance."
+}

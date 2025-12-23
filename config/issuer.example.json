@@ -1,0 +1,12 @@
+{
+    "company_name": "Issuer Example",
+    "representative": "M. Issuer",
+    "address": "123 rue Example, 75000 Paris, France",
+    "email": "issuer@example.com",
+    "phone": "+33 1 23 45 67 89",
+    "siren": "1234567890",
+    "vat": "FR12345678901",
+    "payment_method": "Virements bancaires",
+    "iban": "FR7612345987650123456789014",
+    "bic": "BICEXAMPLE"
+}

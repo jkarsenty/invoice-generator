@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Facture {{ invoice.number }}</title>
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="templates/invoice.css">
+</head>
+
+<body>
+
+    <!-- ================= HEADER ================= -->
+    <header class="header">
+        <div class="header-brand">
+            <img src="assets/logo.example.png" alt="Logo {{ issuer.company_name }}" class="logo">
+            <h1 class="company-name">{{ issuer.company_name }}</h1>
+        </div>
+    </header>
+
+    <!-- ================= INFOS FACTURE ================= -->
+    <section class="invoice-meta">
+
+        <div class="invoice-left">
+            <div class="invoice-title">FACTURE</div>
+            <div class="invoice-number">
+                N° Facture : {{ invoice.number }}
+            </div>
+        </div>
+
+        <div class="invoice-details">
+            <div><strong>Date Facture :</strong> {{ invoice.issue_date }}</div>
+            <div><strong>Date Prestation :</strong> {{ invoice.service_date }}</div>
+            <div><strong>Échéance Paiement :</strong> {{ invoice.due_date }}</div>
+        </div>
+
+    </section>
+
+
+    <!-- ================= CLIENT / ISSUER ================= -->
+    <section class="parties">
+
+        <div class="party client">
+            <h2>Client</h2>
+            <p class="name">{{ client.name }}</p>
+            <p>{{ client.address }}</p>
+            <p>SIREN / SIRET : {{ client.siren }}</p>
+            {% if client.vat %}
+            <p>TVA : {{ client.vat }}</p>
+            {% endif %}
+        </div>
+
+        <div class="party issuer">
+            <h2>Prestataire</h2>
+            <p>{{ issuer.representative }}</p>
+            <p>{{ issuer.address }}</p>
+            <p>{{ issuer.email }}</p>
+            <p>{{ issuer.phone }}</p>
+            <p>SIREN : {{ issuer.siren }}</p>
+            <p>TVA : {{ issuer.vat }}</p>
+        </div>
+
+    </section>
+
+    <!-- ================= TABLEAU PRESTATIONS ================= -->
+    <section class="items">
+        <table class="items-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Description</th>
+                    <th>Quantité</th>
+                    <th>Prix Unitaire</th>
+                    <th>Montant</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr>
+                    <td>{{ item.date }}</td>
+                    <td class="description">{{ item.description }}</td>
+                    <td class="number">{{ item.quantity }}</td>
+                    <td class="number">{{ item.unit_price_fmt }} €</td>
+                    <td class="number">{{ item.line_total_fmt }} €</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </section>
+
+    <!-- ================= TOTAUX ================= -->
+    <section class="totals">
+        <table>
+            <tr>
+                <td>Total HT</td>
+                <td class="number">{{ totals.ht }} €</td>
+            </tr>
+            <tr>
+                <td>TVA ({{ totals.vat_rate }} %)</td>
+                <td class="number">{{ totals.vat_amount }} €</td>
+            </tr>
+            <tr class="total-ttc">
+                <td>Total TTC</td>
+                <td class="number">{{ totals.ttc }} €</td>
+            </tr>
+        </table>
+    </section>
+
+
+    <!-- ================= INFOS PAIEMENT ================= -->
+    <section class="payment">
+        <h2>Informations de paiement</h2>
+        <p>Méthode de paiement : {{ issuer.payment_method }}</p>
+        <p>IBAN : {{ issuer.iban }}</p>
+        <p>BIC : {{ issuer.bic }}</p>
+    </section>
+
+
+    <!-- ================= FOOTER ================= -->
+    <!--
+        <footer class="footer">
+            <p></p>
+        </footer>
+    -->
+
+</body>
+
+</html>

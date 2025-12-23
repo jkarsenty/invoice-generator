@@ -1,0 +1,9 @@
+{
+    "id": "id_client_example",
+    "name": "Demo Client",
+    "address": "25 avenue Exemple, 69000 Lyon, France",
+    "siren": "1234567890",
+    "vat": "FR11111111111",
+    "company": "Client Company",
+    "email": "billing@client-company.test"
+}
