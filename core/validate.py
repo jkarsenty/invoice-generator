@@ -35,6 +35,21 @@ def load_and_validate(
     return issuer, client, invoice
 
 
+def validate_issuer_data(data: dict, file_label: str) -> Issuer:
+    _ensure_root_dict(data, file_label)
+    return _validate_issuer(data, file_label)
+
+
+def validate_client_data(data: dict, file_label: str) -> Client:
+    _ensure_root_dict(data, file_label)
+    return _validate_client(data, file_label)
+
+
+def validate_invoice_data(data: dict, file_label: str) -> Invoice:
+    _ensure_root_dict(data, file_label)
+    return _validate_invoice(data, file_label)
+
+
 def as_dict(obj: Any) -> dict:
     return asdict(obj)
 
@@ -51,6 +66,11 @@ def _load_json_checked(path: Path, file_label: str) -> dict:
         raise ValidationError(file_label, "<racine>", "mauvais type (objet JSON attendu)")
 
     return data
+
+
+def _ensure_root_dict(data: dict, file_label: str) -> None:
+    if not isinstance(data, dict):
+        raise ValidationError(file_label, "<racine>", "mauvais type (objet JSON attendu)")
 
 
 def _validate_issuer(data: dict, file_label: str) -> Issuer:

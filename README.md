@@ -30,6 +30,18 @@ Creer ensuite vos fichiers de travail:
 - `clients/<client>.json`
 - `invoices/<invoice>.json`
 
+CLI metier (recommande)
+-----------------------
+```bash
+uv run python -m scripts.invoice clients
+uv run python -m scripts.invoice list
+uv run python -m scripts.invoice new
+uv run python -m scripts.invoice generate --invoice invoices/invoice.example.json --client clients/client.example.json
+cat invoices/invoice.example.json | uv run python -m scripts.invoice generate --stdin --client clients/client.example.json
+```
+
+CLI historique (compatible)
+---------------------------
 ```bash
 uv run python -m scripts.generate_invoice \
   --invoice invoices/invoice.example.json \
@@ -100,7 +112,8 @@ Exemple facture valide (extrait):
 
 Structure du projet
 -------------------
-- `scripts/generate_invoice.py` point d'entree CLI
+- `scripts/invoice.py` point d'entree CLI metier
+- `scripts/generate_invoice.py` point d'entree CLI historique
 - `config/` infos emetteur (exemple: `config/issuer.example.json`)
 - `clients/` donnees clients (exemple: `clients/client.example.json`)
 - `invoices/` contenu factures (exemple: `invoices/invoice.example.json`)
