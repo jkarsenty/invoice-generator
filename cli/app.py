@@ -1,7 +1,8 @@
-import argparse
 import sys
 from datetime import datetime
 from pathlib import Path
+
+import typer
 
 from core.errors import InvoiceGeneratorError
 from services.client_service import list_clients, resolve_client_selector
@@ -14,17 +15,24 @@ from services.invoice_service import (
 )
 
 
+app = typer.Typer(add_completion=False)
+
 BASE_DIR = Path(__file__).resolve().parents[1]
 CLIENTS_DIR = BASE_DIR / "clients"
 INVOICES_DIR = BASE_DIR / "invoices"
 OUTPUT_DIR = BASE_DIR / "output"
 
 
+def _exit_error(message: str, code: int) -> None:
+    typer.echo(message, err=True)
+    raise typer.Exit(code=code)
+
+
 def _load_json_file(path: Path, label: str) -> dict:
     try:
         return load_invoice_from_path(path)
     except InvoiceGeneratorError as exc:
-        raise SystemExit(str(exc)) from None
+        _exit_error(str(exc), 1)
 
 
 def _load_json_stdin(label: str) -> dict:
@@ -32,7 +40,7 @@ def _load_json_stdin(label: str) -> dict:
     try:
         return parse_invoice_json(raw, label)
     except InvoiceGeneratorError as exc:
-        raise SystemExit(str(exc)) from None
+        _exit_error(str(exc), 1)
 
 
 def _list_clients() -> tuple[list[dict], list[str]]:
@@ -57,7 +65,7 @@ def _resolve_client(selector: str | None) -> dict:
     if not clients:
         for err in errors:
             print(f"[invalide] {err}")
-        raise SystemExit("Aucun client valide disponible.")
+        _exit_error("Aucun client valide disponible.", 1)
 
     if selector is None:
         _print_clients(clients, errors)
@@ -82,7 +90,7 @@ def _resolve_client(selector: str | None) -> dict:
             clients_dir=CLIENTS_DIR,
         )
     except InvoiceGeneratorError as exc:
-        raise SystemExit(str(exc)) from None
+        _exit_error(str(exc), 1)
 
 
 def _prompt_non_empty(label: str) -> str:
@@ -176,35 +184,72 @@ def _collect_items() -> list[dict]:
     return items
 
 
-def _generate_command(args: argparse.Namespace) -> None:
-    client = _resolve_client(args.client)
-    if args.stdin:
+def _validate_generate_options(invoice: str | None, stdin: bool) -> None:
+    if invoice and stdin:
+        raise typer.UsageError("argument --stdin: not allowed with argument --invoice")
+    if not invoice and not stdin:
+        raise typer.UsageError("one of the arguments --invoice --stdin is required")
+
+
+@app.command("generate")
+def generate_command(
+    invoice: str | None = typer.Option(
+        None,
+        "--invoice",
+        help="Chemin vers un fichier invoice.json",
+    ),
+    stdin: bool = typer.Option(
+        False,
+        "--stdin",
+        help="Lire la facture JSON depuis stdin",
+    ),
+    client: str | None = typer.Option(
+        None,
+        "--client",
+        help="Client (index, id, nom ou chemin)",
+    ),
+    output: str | None = typer.Option(
+        None,
+        "--output",
+        help="Chemin du PDF de sortie",
+    ),
+) -> None:
+    _validate_generate_options(invoice, stdin)
+    client_data = _resolve_client(client)
+    if stdin:
         invoice_data = _load_json_stdin("<stdin>")
         invoice_label = "<stdin>"
     else:
-        invoice_path = (BASE_DIR / args.invoice).resolve()
+        invoice_path = (BASE_DIR / invoice).resolve()
         invoice_data = _load_json_file(invoice_path, invoice_path.as_posix())
         invoice_label = invoice_path.as_posix()
 
-    output_path = Path(args.output) if args.output else None
+    output_path = Path(output) if output else None
     try:
         result = generate_invoice(
             invoice_data=invoice_data,
             invoice_label=invoice_label,
-            client_data=client["data"],
-            client_label=client["path"].as_posix(),
+            client_data=client_data["data"],
+            client_label=client_data["path"].as_posix(),
             output_path=output_path,
             base_dir=BASE_DIR,
             invoices_dir=INVOICES_DIR,
             output_dir=OUTPUT_DIR,
         )
     except InvoiceGeneratorError as exc:
-        raise SystemExit(str(exc)) from None
+        _exit_error(str(exc), 1)
 
     print(f"Facture générée : {result['output_pdf']}")
 
 
-def _new_command(args: argparse.Namespace) -> None:
+@app.command("new")
+def new_command(
+    no_pdf: bool = typer.Option(
+        False,
+        "--no-pdf",
+        help="Ne pas generer le PDF apres creation",
+    ),
+) -> None:
     client = _resolve_client(None)
 
     number = _prompt_optional("Numero de facture")
@@ -231,17 +276,18 @@ def _new_command(args: argparse.Namespace) -> None:
             base_dir=BASE_DIR,
             invoices_dir=INVOICES_DIR,
             output_dir=OUTPUT_DIR,
-            no_pdf=args.no_pdf,
+            no_pdf=no_pdf,
         )
     except InvoiceGeneratorError as exc:
-        raise SystemExit(str(exc)) from None
+        _exit_error(str(exc), 1)
 
     print(f"Facture enregistree: {result['invoice_path']}")
     if result["output_pdf"]:
         print(f"Facture générée : {result['output_pdf']}")
 
 
-def _list_command(_: argparse.Namespace) -> None:
+@app.command("list")
+def list_command() -> None:
     result = list_invoices(INVOICES_DIR)
     entries = result["entries"]
     if not entries:
@@ -254,54 +300,14 @@ def _list_command(_: argparse.Namespace) -> None:
         )
 
 
-def _clients_command(_: argparse.Namespace) -> None:
+@app.command("clients")
+def clients_command() -> None:
     clients, errors = _list_clients()
     _print_clients(clients, errors)
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="CLI metier de facturation")
-    subparsers = parser.add_subparsers(dest="command", required=True)
-
-    new_parser = subparsers.add_parser("new", help="Creation guidee d'une facture")
-    new_parser.add_argument(
-        "--no-pdf",
-        action="store_true",
-        help="Ne pas generer le PDF apres creation",
-    )
-    new_parser.set_defaults(func=_new_command)
-
-    generate_parser = subparsers.add_parser(
-        "generate", help="Generer un PDF a partir d'une facture"
-    )
-    generate_group = generate_parser.add_mutually_exclusive_group(required=True)
-    generate_group.add_argument(
-        "--invoice",
-        help="Chemin vers un fichier invoice.json",
-    )
-    generate_group.add_argument(
-        "--stdin",
-        action="store_true",
-        help="Lire la facture JSON depuis stdin",
-    )
-    generate_parser.add_argument(
-        "--client",
-        help="Client (index, id, nom ou chemin)",
-    )
-    generate_parser.add_argument(
-        "--output",
-        help="Chemin du PDF de sortie",
-    )
-    generate_parser.set_defaults(func=_generate_command)
-
-    list_parser = subparsers.add_parser("list", help="Lister les factures")
-    list_parser.set_defaults(func=_list_command)
-
-    clients_parser = subparsers.add_parser("clients", help="Lister les clients")
-    clients_parser.set_defaults(func=_clients_command)
-
-    args = parser.parse_args()
-    args.func(args)
+    app()
 
 
 if __name__ == "__main__":

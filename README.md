@@ -32,6 +32,7 @@ Creer ensuite vos fichiers de travail:
 
 CLI metier (recommande)
 -----------------------
+CLI basee sur Typer (options typpees, aide automatique).
 ```bash
 uv run python -m scripts.invoice clients
 uv run python -m scripts.invoice list
@@ -121,6 +122,15 @@ Confidentialite et donnees
 --------------------------
 Ce depot ne doit contenir aucune facture reelle ni donnee personnelle.
 Seuls les fichiers `.example.json` doivent etre versionnes.
+
+Roadmap
+-------
+- Phase 1: CLI initiale pour générer des factures à partir de fichiers JSON (argparse).
+- Phase 2: Enrichissement de la CLI (listing clients/factures, génération multi-modes).
+- Phase 3: Migration vers Typer pour une CLI moderne et professionnelle.
+- Phase 4: Introduction de fonctions “API-style” acceptant des payloads Python (dict).
+- Phase 5: Ajout d’un pipeline / agent IA (texte, email, voix → facture).
+- Phase 6: Exposition via API pour un usage SaaS ou applicatif.
 
 Licence
 -------

@@ -45,6 +45,11 @@ assert_file "clients/client.example.json"
 assert_file "${issuer_example}"
 prepare_issuer
 
+if grep -RIn "argparse" cli core services scripts >/dev/null; then
+  echo "argparse still present in codebase" >&2
+  exit 1
+fi
+
 echo "Listing existing clients:"
 uv run python -m scripts.invoice clients
 
@@ -72,4 +77,3 @@ assert_file "${base}_stdin.pdf"
 # Optional interactive flow:
 # echo "Starting interactive invoice creation..."
 # uv run python -m scripts.invoice new
-
