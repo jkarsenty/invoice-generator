@@ -78,3 +78,8 @@ notes_*
 # Privacy stash
 # ======================
 privacy/
+
+# ======================
+# Documentation (generated)
+# ======================
+docs/

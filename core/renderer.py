@@ -6,30 +6,22 @@ from jinja2 import Environment, FileSystemLoader
 from weasyprint import HTML
 
 from core.loader import load_json
-from core.validate import (
-    ValidationError,
-    validate_client_data,
-    validate_invoice_data,
-    validate_issuer_data,
-)
+from core.validate import ValidationError, validate_client_data, validate_invoice_data, validate_issuer_data
 
 
 def render_invoice(
     invoice_path: Path,
     client_path: Path,
     output_pdf_path: Path,
-    base_dir: Path
+    base_dir: Path,
 ):
-    try:
-        issuer_obj, client_obj, invoice_obj = _load_and_validate(
-            issuer_path=base_dir / "config" / "issuer.json",
-            client_path=client_path,
-            invoice_path=invoice_path,
-        )
-    except ValidationError as exc:
-        raise SystemExit(str(exc))
+    issuer_obj, client_obj, invoice_obj = _load_and_validate(
+        issuer_path=base_dir / "config" / "issuer.json",
+        client_path=client_path,
+        invoice_path=invoice_path,
+    )
 
-    _render_invoice(
+    return _render_invoice(
         issuer_obj=issuer_obj,
         client_obj=client_obj,
         invoice_obj=invoice_obj,
@@ -48,21 +40,16 @@ def render_invoice_data(
 ):
     try:
         issuer_raw = load_json(base_dir / "config" / "issuer.json")
-        issuer_obj = validate_issuer_data(issuer_raw, "config/issuer.json")
-        client_obj = validate_client_data(client_data, client_label)
-        invoice_obj = validate_invoice_data(invoice_data, invoice_label)
     except FileNotFoundError:
-        raise SystemExit(
-            str(ValidationError("config/issuer.json", "<fichier>", "introuvable"))
-        ) from None
+        raise ValidationError("config/issuer.json", "<fichier>", "introuvable") from None
     except json.JSONDecodeError:
-        raise SystemExit(
-            str(ValidationError("config/issuer.json", "<fichier>", "JSON invalide"))
-        ) from None
-    except ValidationError as exc:
-        raise SystemExit(str(exc))
+        raise ValidationError("config/issuer.json", "<fichier>", "JSON invalide") from None
 
-    _render_invoice(
+    issuer_obj = validate_issuer_data(issuer_raw, "config/issuer.json")
+    client_obj = validate_client_data(client_data, client_label)
+    invoice_obj = validate_invoice_data(invoice_data, invoice_label)
+
+    return _render_invoice(
         issuer_obj=issuer_obj,
         client_obj=client_obj,
         invoice_obj=invoice_obj,
@@ -128,7 +115,7 @@ def _render_invoice(
         base_url=str(base_dir),
     ).write_pdf(str(output_pdf_path))
 
-    print(f"Facture générée : {output_pdf_path}")
+    return output_pdf_path
 
 
 def _load_json_checked(path: Path, file_label: str) -> dict:
