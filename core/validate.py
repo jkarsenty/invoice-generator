@@ -1,5 +1,4 @@
 import json
-from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -19,22 +18,6 @@ class ValidationError(Exception):
         return f"Erreur dans {self.file_label}: champ '{self.field}' {self.reason}."
 
 
-def load_and_validate(
-    issuer_path: Path,
-    client_path: Path,
-    invoice_path: Path
-) -> tuple[Issuer, Client, Invoice]:
-    issuer_raw = _load_json_checked(issuer_path, "config/issuer.json")
-    client_raw = _load_json_checked(client_path, client_path.as_posix())
-    invoice_raw = _load_json_checked(invoice_path, invoice_path.as_posix())
-
-    issuer = _validate_issuer(issuer_raw, "config/issuer.json")
-    client = _validate_client(client_raw, client_path.as_posix())
-    invoice = _validate_invoice(invoice_raw, invoice_path.as_posix())
-
-    return issuer, client, invoice
-
-
 def validate_issuer_data(data: dict, file_label: str) -> Issuer:
     _ensure_root_dict(data, file_label)
     return _validate_issuer(data, file_label)
@@ -48,10 +31,6 @@ def validate_client_data(data: dict, file_label: str) -> Client:
 def validate_invoice_data(data: dict, file_label: str) -> Invoice:
     _ensure_root_dict(data, file_label)
     return _validate_invoice(data, file_label)
-
-
-def as_dict(obj: Any) -> dict:
-    return asdict(obj)
 
 
 def _load_json_checked(path: Path, file_label: str) -> dict:

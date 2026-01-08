@@ -40,15 +40,6 @@ uv run python -m scripts.invoice generate --invoice invoices/invoice.example.jso
 cat invoices/invoice.example.json | uv run python -m scripts.invoice generate --stdin --client clients/client.example.json
 ```
 
-CLI historique (compatible)
----------------------------
-```bash
-uv run python -m scripts.generate_invoice \
-  --invoice invoices/invoice.example.json \
-  --client clients/client.example.json \
-  --output output/invoice.example.pdf
-```
-
 Sortie
 ------
 Le PDF est ecrit au chemin indique par `--output` (le dossier est cree si besoin).
@@ -113,7 +104,6 @@ Exemple facture valide (extrait):
 Structure du projet
 -------------------
 - `scripts/invoice.py` point d'entree CLI metier
-- `scripts/generate_invoice.py` point d'entree CLI historique
 - `config/` infos emetteur (exemple: `config/issuer.example.json`)
 - `clients/` donnees clients (exemple: `clients/client.example.json`)
 - `invoices/` contenu factures (exemple: `invoices/invoice.example.json`)

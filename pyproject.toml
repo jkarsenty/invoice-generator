@@ -7,4 +7,4 @@ requires-python = ">=3.11"
 dependencies = ["jinja2>=3.1.6", "weasyprint>=67.0"]
 
 [project.scripts]
-invoice-generator = "scripts.generate_invoice:main"
+invoice-generator = "scripts.invoice:main"

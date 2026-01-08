@@ -6,30 +6,29 @@ set -euo pipefail
 
 stamp=$(date +%Y%m%d%H%M%S)
 base="output/manual_test_${stamp}"
+export DYLD_FALLBACK_LIBRARY_PATH="$(brew --prefix)/lib:${DYLD_FALLBACK_LIBRARY_PATH:-}"
 
 echo "Listing existing clients:"
 uv run python -m scripts.invoice clients
 
+echo ""
 echo "Listing existing invoices:"
 uv run python -m scripts.invoice list
 
+echo ""
 echo "Generating invoice PDFs from invoice file and client file:"
 uv run python -m scripts.invoice generate \
   --invoice invoices/invoice.example.json \
   --client clients/client.example.json \
   --output "${base}_generate.pdf"
 
+echo ""
 echo "Generating invoice PDF from stdin input:"
 cat invoices/invoice.example.json | uv run python -m scripts.invoice generate \
   --stdin \
   --client clients/client.example.json \
   --output "${base}_stdin.pdf"
 
-echo "Generating invoice PDF using legacy command (old version):"
-uv run python -m scripts.generate_invoice \
-  --invoice invoices/invoice.example.json \
-  --client clients/client.example.json \
-  --output "${base}_legacy.pdf"
 
 # Optional interactive flow:
 # echo "Starting interactive invoice creation..."
