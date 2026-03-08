@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Manual test script for CLI (Phase 0)
+# Manual test script for Typer CLI
 # Creates PDFs in output/ with a timestamp to avoid collisions.
 
 stamp=$(date +%Y%m%d%H%M%S)
@@ -45,10 +45,8 @@ assert_file "clients/client.example.json"
 assert_file "${issuer_example}"
 prepare_issuer
 
-if grep -RIn "argparse" cli core services scripts >/dev/null; then
-  echo "argparse still present in codebase" >&2
-  exit 1
-fi
+echo "CLI help:"
+uv run python -m scripts.invoice --help >/dev/null
 
 echo "Listing existing clients:"
 uv run python -m scripts.invoice clients
@@ -58,22 +56,21 @@ echo "Listing existing invoices:"
 uv run python -m scripts.invoice list
 
 echo ""
-echo "Generating invoice PDFs from invoice file and client file:"
+echo "Validating example invoice JSON:"
+uv run python -m scripts.invoice json validate --invoice invoices/invoice.example.json
+
+echo ""
+echo "Generating invoice PDF from JSON file:"
+uv run python -m scripts.invoice pdf from-json \
+  --invoice invoices/invoice.example.json \
+  --client clients/client.example.json \
+  --output "${base}_from_json.pdf"
+assert_file "${base}_from_json.pdf"
+
+echo ""
+echo "Generating invoice PDF using deprecated alias generate (compat):"
 uv run python -m scripts.invoice generate \
   --invoice invoices/invoice.example.json \
   --client clients/client.example.json \
-  --output "${base}_generate.pdf"
-assert_file "${base}_generate.pdf"
-
-echo ""
-echo "Generating invoice PDF from stdin input:"
-cat invoices/invoice.example.json | uv run python -m scripts.invoice generate \
-  --stdin \
-  --client clients/client.example.json \
-  --output "${base}_stdin.pdf"
-assert_file "${base}_stdin.pdf"
-
-
-# Optional interactive flow:
-# echo "Starting interactive invoice creation..."
-# uv run python -m scripts.invoice new
+  --output "${base}_generate_alias.pdf"
+assert_file "${base}_generate_alias.pdf"

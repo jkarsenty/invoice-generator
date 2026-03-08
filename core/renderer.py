@@ -3,10 +3,21 @@ from dataclasses import asdict
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
-from weasyprint import HTML
 
 from core.loader import load_json
-from core.validate import ValidationError, validate_client_data, validate_invoice_data, validate_issuer_data
+from core.validate import (
+    ValidationError,
+    validate_client_data,
+    validate_invoice_data,
+    validate_issuer_data,
+)
+
+
+PDF_DEPENDENCY_ERROR = (
+    "Erreur PDF: dependances WeasyPrint manquantes. "
+    "Installez les bibliotheques systeme (ex: cairo, pango, gdk-pixbuf, libffi) "
+    "puis relancez la commande PDF."
+)
 
 
 def render_invoice(
@@ -109,13 +120,22 @@ def _render_invoice(
     )
 
     output_pdf_path.parent.mkdir(parents=True, exist_ok=True)
+    html_class = _load_weasyprint_html()
 
-    HTML(
+    html_class(
         string=html,
         base_url=str(base_dir),
     ).write_pdf(str(output_pdf_path))
 
     return output_pdf_path
+
+
+def _load_weasyprint_html():
+    try:
+        from weasyprint import HTML
+    except Exception as exc:  # pragma: no cover - depends on host system libs
+        raise RuntimeError(PDF_DEPENDENCY_ERROR) from exc
+    return HTML
 
 
 def _load_json_checked(path: Path, file_label: str) -> dict:
@@ -156,10 +176,7 @@ def compute_items(items_raw):
         line_total = row["quantity"] * row["unit_price"]
         total_ht += line_total
 
-        items.append({
-            **row,
-            "line_total": line_total
-        })
+        items.append({**row, "line_total": line_total})
 
     return items, total_ht
 
@@ -172,7 +189,7 @@ def compute_totals(total_ht, vat_rate):
         "total_ht": total_ht,
         "vat_rate": vat_rate,
         "vat_amount": vat_amount,
-        "total_ttc": total_ttc
+        "total_ttc": total_ttc,
     }
 
 

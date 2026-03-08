@@ -12,10 +12,15 @@ from services.invoice_service import (
     list_invoices,
     load_invoice_from_path,
     parse_invoice_json,
+    validate_invoice_file,
 )
 
 
 app = typer.Typer(add_completion=False)
+json_app = typer.Typer(help="Commandes JSON (creation et validation).")
+pdf_app = typer.Typer(help="Commandes PDF (conversion depuis JSON valide).")
+app.add_typer(json_app, name="json")
+app.add_typer(pdf_app, name="pdf")
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 CLIENTS_DIR = BASE_DIR / "clients"
@@ -184,14 +189,75 @@ def _collect_items() -> list[dict]:
     return items
 
 
+def _confirm_pdf_conversion() -> bool:
+    value = input("Convertir en PDF maintenant ? (o/N): ").strip().lower()
+    return value in {"o", "oui", "y", "yes"}
+
+
 def _validate_generate_options(invoice: str | None, stdin: bool) -> None:
     if invoice and stdin:
-        raise typer.UsageError("argument --stdin: not allowed with argument --invoice")
+        raise typer.BadParameter(
+            "argument --stdin: not allowed with argument --invoice",
+            param_hint="--stdin",
+        )
     if not invoice and not stdin:
-        raise typer.UsageError("one of the arguments --invoice --stdin is required")
+        raise typer.BadParameter(
+            "one of the arguments --invoice --stdin is required",
+            param_hint="--invoice/--stdin",
+        )
 
 
-@app.command("generate")
+@pdf_app.command("from-json")
+def pdf_from_json_command(
+    invoice: str = typer.Option(
+        ...,
+        "--invoice",
+        help="Chemin vers un fichier invoice.json",
+    ),
+    client: str | None = typer.Option(
+        None,
+        "--client",
+        help="Client (index, id, nom ou chemin)",
+    ),
+    output: str | None = typer.Option(
+        None,
+        "--output",
+        help="Chemin du PDF de sortie",
+    ),
+    force: bool = typer.Option(
+        False,
+        "--force",
+        help="Ecraser le PDF de sortie s'il existe deja.",
+    ),
+) -> None:
+    client_data = _resolve_client(client)
+    invoice_path = (BASE_DIR / invoice).resolve()
+    invoice_data = _load_json_file(invoice_path, invoice_path.as_posix())
+
+    output_path = Path(output) if output else None
+    try:
+        result = generate_invoice(
+            invoice_data=invoice_data,
+            invoice_label=invoice_path.as_posix(),
+            client_data=client_data["data"],
+            client_label=client_data["path"].as_posix(),
+            output_path=output_path,
+            base_dir=BASE_DIR,
+            invoices_dir=INVOICES_DIR,
+            output_dir=OUTPUT_DIR,
+            force=force,
+        )
+    except InvoiceGeneratorError as exc:
+        _exit_error(str(exc), 1)
+
+    print(f"Facture générée : {result['output_pdf']}")
+
+
+@app.command(
+    "generate",
+    help="DEPRECATED: utilisez `invoice pdf from-json`.",
+    deprecated=True,
+)
 def generate_command(
     invoice: str | None = typer.Option(
         None,
@@ -212,6 +278,11 @@ def generate_command(
         None,
         "--output",
         help="Chemin du PDF de sortie",
+    ),
+    force: bool = typer.Option(
+        False,
+        "--force",
+        help="Ecraser le PDF de sortie s'il existe deja.",
     ),
 ) -> None:
     _validate_generate_options(invoice, stdin)
@@ -235,6 +306,7 @@ def generate_command(
             base_dir=BASE_DIR,
             invoices_dir=INVOICES_DIR,
             output_dir=OUTPUT_DIR,
+            force=force,
         )
     except InvoiceGeneratorError as exc:
         _exit_error(str(exc), 1)
@@ -242,16 +314,32 @@ def generate_command(
     print(f"Facture générée : {result['output_pdf']}")
 
 
-@app.command("new")
-def new_command(
-    no_pdf: bool = typer.Option(
+@json_app.command("validate")
+def json_validate_command(
+    invoice: str = typer.Option(
+        ...,
+        "--invoice",
+        help="Chemin vers un fichier invoice.json",
+    )
+) -> None:
+    invoice_path = (BASE_DIR / invoice).resolve()
+    try:
+        result = validate_invoice_file(invoice_path, INVOICES_DIR)
+    except InvoiceGeneratorError as exc:
+        _exit_error(str(exc), 1)
+
+    print(f"Facture JSON valide : {invoice_path}")
+    print(f"Numero: {result['invoice_number']}")
+
+
+@json_app.command("new")
+def json_new_command(
+    force: bool = typer.Option(
         False,
-        "--no-pdf",
-        help="Ne pas generer le PDF apres creation",
+        "--force",
+        help="Ecraser le fichier JSON et/ou PDF s'ils existent deja.",
     ),
 ) -> None:
-    client = _resolve_client(None)
-
     number = _prompt_optional("Numero de facture")
     issue_date = _prompt_date("Date d'emission")
     service_date = _prompt_date("Date de service")
@@ -272,18 +360,34 @@ def new_command(
         result = create_invoice(
             invoice_data=invoice_data,
             invoice_label="<nouvelle facture>",
-            client_path=client["path"],
-            base_dir=BASE_DIR,
             invoices_dir=INVOICES_DIR,
-            output_dir=OUTPUT_DIR,
-            no_pdf=no_pdf,
+            force=force,
         )
     except InvoiceGeneratorError as exc:
         _exit_error(str(exc), 1)
 
     print(f"Facture enregistree: {result['invoice_path']}")
-    if result["output_pdf"]:
-        print(f"Facture générée : {result['output_pdf']}")
+
+    if not _confirm_pdf_conversion():
+        return
+
+    client = _resolve_client(None)
+    try:
+        pdf_result = generate_invoice(
+            invoice_data=result["invoice_data"],
+            invoice_label=result["invoice_path"],
+            client_data=client["data"],
+            client_label=client["path"].as_posix(),
+            output_path=None,
+            base_dir=BASE_DIR,
+            invoices_dir=INVOICES_DIR,
+            output_dir=OUTPUT_DIR,
+            force=force,
+        )
+    except InvoiceGeneratorError as exc:
+        _exit_error(str(exc), 1)
+
+    print(f"Facture générée : {pdf_result['output_pdf']}")
 
 
 @app.command("list")

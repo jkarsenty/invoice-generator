@@ -1,11 +1,12 @@
 import json
 import re
+from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
 
 from core.errors import InvalidInputError, RenderError, ValidationError
 from core.loader import load_json
-from core.renderer import render_invoice, render_invoice_data
+from core.renderer import render_invoice_data
 from core.validate import ValidationError as CoreValidationError
 from core.validate import validate_invoice_data
 
@@ -40,7 +41,7 @@ def _load_json_file(path: Path, label: str) -> dict:
 
 def _generate_invoice_number(invoices_dir: Path) -> str:
     year = datetime.now().strftime("%Y")
-    pattern = re.compile(r"INV-(\\d{4})-(\\d{4})")
+    pattern = re.compile(r"INV-(\d{4})-(\d{4})")
     max_index = 0
     for path in sorted(invoices_dir.glob("*.json")):
         try:
@@ -57,6 +58,37 @@ def _generate_invoice_number(invoices_dir: Path) -> str:
             continue
         max_index = max(max_index, int(match.group(2)))
     return f"INV-{year}-{max_index + 1:04d}"
+
+
+def _validated_invoice_data(invoice_data: dict, invoice_label: str, invoices_dir: Path) -> dict:
+    if not isinstance(invoice_data, dict):
+        raise ValidationError(
+            str(
+                CoreValidationError(
+                    invoice_label,
+                    "<racine>",
+                    "mauvais type (objet JSON attendu)",
+                )
+            )
+        )
+
+    candidate = deepcopy(invoice_data)
+    if not candidate.get("number"):
+        candidate["number"] = _generate_invoice_number(invoices_dir)
+
+    try:
+        validate_invoice_data(candidate, invoice_label)
+    except CoreValidationError as exc:
+        raise ValidationError(str(exc)) from None
+
+    return candidate
+
+
+def _check_target_path(path: Path, label: str, force: bool) -> None:
+    if path.exists() and not force:
+        raise InvalidInputError(
+            f"Erreur: {label} existe deja: {path}. Utilisez --force pour ecraser."
+        )
 
 
 def load_invoice_from_path(path: Path) -> dict:
@@ -107,63 +139,40 @@ def list_invoices(invoices_dir: Path) -> dict:
     return {"entries": entries}
 
 
+def validate_invoice_file(invoice_path: Path, invoices_dir: Path) -> dict:
+    try:
+        raw = _load_json_file(invoice_path, invoice_path.as_posix())
+    except CoreValidationError as exc:
+        raise ValidationError(str(exc)) from None
+
+    validated = _validated_invoice_data(raw, invoice_path.as_posix(), invoices_dir)
+    return {
+        "invoice_number": validated["number"],
+        "invoice_data": validated,
+        "invoice_label": invoice_path.as_posix(),
+    }
+
+
 def create_invoice(
     *,
     invoice_data: dict,
     invoice_label: str,
-    client_path: Path,
-    base_dir: Path,
     invoices_dir: Path,
-    output_dir: Path,
-    no_pdf: bool,
+    force: bool,
 ) -> dict:
-    if not invoice_data.get("number"):
-        invoice_data["number"] = _generate_invoice_number(invoices_dir)
+    validated = _validated_invoice_data(invoice_data, invoice_label, invoices_dir)
+    invoice_path = invoices_dir / _make_invoice_filename(validated["number"])
 
-    try:
-        validate_invoice_data(invoice_data, invoice_label)
-    except CoreValidationError as exc:
-        raise ValidationError(str(exc)) from None
-
-    invoice_path = invoices_dir / _make_invoice_filename(invoice_data["number"])
-    output_path = output_dir / _make_output_filename(invoice_data["number"])
-
-    if invoice_path.exists():
-        raise InvalidInputError(f"Erreur: le fichier existe deja: {invoice_path}")
-    if not no_pdf and output_path.exists():
-        raise InvalidInputError(f"Erreur: le PDF existe deja: {output_path}")
+    _check_target_path(invoice_path, "le fichier JSON", force)
 
     invoices_dir.mkdir(parents=True, exist_ok=True)
     with open(invoice_path, "w", encoding="utf-8") as f:
-        json.dump(invoice_data, f, indent=4, ensure_ascii=False)
-
-    if no_pdf:
-        return {
-            "invoice_path": str(invoice_path),
-            "output_pdf": None,
-            "invoice_number": invoice_data["number"],
-            "warnings": [],
-        }
-
-    if output_path.exists():
-        raise InvalidInputError(f"Erreur: le PDF existe deja: {output_path}")
-
-    try:
-        render_invoice(
-            invoice_path=invoice_path,
-            client_path=client_path,
-            output_pdf_path=output_path,
-            base_dir=base_dir,
-        )
-    except CoreValidationError as exc:
-        raise ValidationError(str(exc)) from None
-    except Exception as exc:
-        raise RenderError(str(exc) or "Erreur inconnue lors du rendu du PDF.") from None
+        json.dump(validated, f, indent=4, ensure_ascii=False)
 
     return {
         "invoice_path": str(invoice_path),
-        "output_pdf": str(output_path),
-        "invoice_number": invoice_data["number"],
+        "invoice_number": validated["number"],
+        "invoice_data": validated,
         "warnings": [],
     }
 
@@ -178,32 +187,21 @@ def generate_invoice(
     base_dir: Path,
     invoices_dir: Path,
     output_dir: Path,
+    force: bool,
 ) -> dict:
-    if not isinstance(invoice_data, dict):
-        raise ValidationError(
-            str(CoreValidationError(invoice_label, "<racine>", "mauvais type (objet JSON attendu)"))
-        )
-
-    if not invoice_data.get("number"):
-        invoice_data["number"] = _generate_invoice_number(invoices_dir)
-
-    try:
-        validate_invoice_data(invoice_data, invoice_label)
-    except CoreValidationError as exc:
-        raise ValidationError(str(exc)) from None
+    validated = _validated_invoice_data(invoice_data, invoice_label, invoices_dir)
 
     resolved_output = output_path
     if resolved_output is None:
-        resolved_output = output_dir / _make_output_filename(invoice_data["number"])
+        resolved_output = output_dir / _make_output_filename(validated["number"])
     if not resolved_output.is_absolute():
         resolved_output = base_dir / resolved_output
 
-    if resolved_output.exists():
-        raise InvalidInputError(f"Erreur: le PDF existe deja: {resolved_output}")
+    _check_target_path(resolved_output, "le PDF", force)
 
     try:
         render_invoice_data(
-            invoice_data=invoice_data,
+            invoice_data=validated,
             client_data=client_data,
             output_pdf_path=resolved_output,
             base_dir=base_dir,
@@ -217,7 +215,7 @@ def generate_invoice(
 
     return {
         "output_pdf": str(resolved_output),
-        "invoice_number": invoice_data["number"],
+        "invoice_number": validated["number"],
         "invoice_label": invoice_label,
         "warnings": [],
     }
