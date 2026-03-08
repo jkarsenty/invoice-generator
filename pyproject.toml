@@ -13,3 +13,13 @@ dependencies = [
 
 [project.scripts]
 invoice-generator = "scripts.invoice:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+pythonpath = ["."]

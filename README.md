@@ -85,7 +85,7 @@ Tests automatises inclus:
 
 Commande:
 ```bash
-.venv/bin/python -m unittest discover -s tests -p "test_*.py"
+uv run pytest
 ```
 
 Structure
