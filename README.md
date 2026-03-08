@@ -1,26 +1,25 @@
 Invoice Generator (Python)
 ==========================
 
-Projet Python simple pour generer des factures PDF professionnelles a partir de
-fichiers JSON. Les factures sont rendues en HTML/CSS (Jinja2), puis converties
-en PDF via WeasyPrint.
+Projet Python pour produire des factures a partir de JSON, avec un flux **JSON d'abord** puis conversion PDF optionnelle.
 
 Fonctionnalites
 ---------------
-- Generation de PDF via CLI
-- Configuration JSON (emetteur, clients, factures)
-- Templates HTML/CSS personnalisables
-- Aucune base de donnees
-- Architecture claire et modulaire
+- CLI Typer claire et typée
+- Validation stricte des JSON (issuer/client/invoice)
+- Generation JSON interactive
+- Conversion PDF explicite depuis un JSON valide
+- Refus d'ecrasement par defaut (`--force` requis)
 
 Prerequis
 ---------
 - Python 3.11+
-- Dependances: `jinja2`, `weasyprint` (voir `pyproject.toml`)
+- Dependances Python: `typer`, `jinja2`, `weasyprint`
+- Pour le PDF, installer aussi les libs systeme WeasyPrint (ex: cairo, pango, gdk-pixbuf, libffi)
 
 Utilisation
 -----------
-Utiliser uniquement les fichiers d'exemple comme base:
+Utiliser les exemples comme base:
 - `config/issuer.example.json`
 - `clients/client.example.json`
 - `invoices/invoice.example.json`
@@ -30,107 +29,72 @@ Creer ensuite vos fichiers de travail:
 - `clients/<client>.json`
 - `invoices/<invoice>.json`
 
-CLI metier (recommande)
------------------------
+CLI (contrat JSON-first)
+------------------------
 ```bash
+# commandes non-PDF
+uv run python -m scripts.invoice --help
 uv run python -m scripts.invoice clients
 uv run python -m scripts.invoice list
-uv run python -m scripts.invoice new
-uv run python -m scripts.invoice generate --invoice invoices/invoice.example.json --client clients/client.example.json
-cat invoices/invoice.example.json | uv run python -m scripts.invoice generate --stdin --client clients/client.example.json
-```
 
-CLI historique (compatible)
----------------------------
-```bash
-uv run python -m scripts.generate_invoice \
+# JSON
+uv run python -m scripts.invoice json validate --invoice invoices/invoice.example.json
+uv run python -m scripts.invoice json new
+uv run python -m scripts.invoice json new --force
+
+# PDF explicite
+uv run python -m scripts.invoice pdf from-json \
   --invoice invoices/invoice.example.json \
   --client clients/client.example.json \
   --output output/invoice.example.pdf
+
+# compat temporaire (deprecie)
+uv run python -m scripts.invoice generate --invoice invoices/invoice.example.json --client clients/client.example.json
 ```
 
-Sortie
-------
-Le PDF est ecrit au chemin indique par `--output` (le dossier est cree si besoin).
-Guide: pour l'exemple ci-dessus, le fichier est genere dans `output/invoice.example.pdf`.
+Comportement garanti
+--------------------
+Commande | Effet | Code sortie
+--- | --- | ---
+`invoice clients` | Liste les clients valides + erreurs de validation | `0` si succes
+`invoice list` | Liste les factures JSON et leur statut | `0` si succes
+`invoice json validate --invoice <path>` | Valide schema/types/contraintes d'une facture JSON | `0` valide, `1` invalide
+`invoice json new` | Cree une facture JSON interactive, puis demande `Convertir en PDF maintenant ? (o/N)` | `0` si succes
+`invoice pdf from-json ...` | Genere un PDF depuis JSON + client | `0` si succes
+`invoice generate ...` | Alias de compatibilite (deprecie) | `0` si succes
+
+Politique de securite
+---------------------
+- JSON existant: refus d'ecrasement
+- PDF existant: refus d'ecrasement
+- `--force`: seul moyen d'ecraser
 
 Validation des donnees
 ----------------------
-Avant toute generation de PDF, les fichiers JSON sont valides.
-En cas d'erreur, la generation s'arrete avec un message lisible indiquant le fichier
-et le champ en cause. Les cles inconnues sont refusees.
+Avant creation/validation/generation:
+- champs obligatoires non vides
+- types controles strictement
+- cles inconnues refusees
+- contraintes metier verifiees (`items`, quantites, prix, TVA)
 
-Schemas JSON attendus
----------------------
-Regles communes:
-- les champs obligatoires sont non vides
-- les champs optionnels sont des strings si presents
-- les montants restent numeriques jusqu'au rendu
+Tests
+-----
+Tests automatises inclus:
+- services: auto-numerotation, anti-ecrasement, `--force`
+- CLI: help/list/clients sans crash PDF, codes de sortie, flux `json new` avec/sans conversion
 
-Emetteur (`config/issuer.json`):
-- obligatoires: `company_name`, `address`, `email`, `siren`
-- optionnels: `representative`, `phone`, `vat_number`, `payment_method`, `iban`, `bic`
-
-Client (`clients/{client}.json`):
-- obligatoires: `id`, `name`, `address`, `siren`
-- optionnels: `vat_number`, `email`, `notes`
-
-Facture (`invoices/{invoice}.json`):
-- obligatoires: `number`, `issue_date`, `service_date`, `due_date`, `items`
-- optionnels: `vat_rate` (defaut 20)
-Note: si une ligne n'a pas de `date`, la valeur par defaut est derivee de
-`service_date` (format attendu: YYYY-MM-DD).
-Les champs de date de facture doivent etre au format `YYYY-MM-DD` ou `YYYY/MM/DD`.
-
-Lignes de facture (`items`):
-- obligatoires: `description`, `quantity`, `unit_price`
-- optionnels: `date` (sinon la date par defaut issue de `service_date`)
-
-Contraintes:
-- au moins 1 ligne
-- `quantity` > 0
-- `unit_price` > 0
-- `vat_rate` entre 0 et 100
-
-Exemple facture valide (extrait):
-```json
-{
-  "number": "2024-0001",
-  "issue_date": "2024-10-01",
-  "service_date": "2024-10-01",
-  "due_date": "2024-10-31",
-  "vat_rate": 20,
-  "items": [
-    {
-      "description": "Design system",
-      "quantity": 2,
-      "unit_price": 450
-    }
-  ]
-}
+Commande:
+```bash
+uv run pytest
 ```
 
-Structure du projet
--------------------
-- `scripts/invoice.py` point d'entree CLI metier
-- `scripts/generate_invoice.py` point d'entree CLI historique
-- `config/` infos emetteur (exemple: `config/issuer.example.json`)
-- `clients/` donnees clients (exemple: `clients/client.example.json`)
-- `invoices/` contenu factures (exemple: `invoices/invoice.example.json`)
-- `templates/` templates HTML/CSS
-- `output/` PDFs generes
-
-Personnalisation
-----------------
-Vous pouvez:
-- modifier les JSON d'exemple
-- personnaliser les templates HTML/CSS
-- remplacer le logo d'exemple
-
-Confidentialite et donnees
---------------------------
-Ce depot ne doit contenir aucune facture reelle ni donnee personnelle.
-Seuls les fichiers `.example.json` doivent etre versionnes.
+Structure
+---------
+- `scripts/invoice.py`: point d'entree
+- `cli/`: interface Typer
+- `services/`: logique metier re-utilisable
+- `core/`: validation/schema/rendu
+- `templates/`: HTML/CSS facture
 
 Licence
 -------

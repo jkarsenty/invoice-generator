@@ -79,3 +79,8 @@ docs/
 # Privacy stash
 # ======================
 privacy/
+
+# ======================
+# Documentation (generated)
+# ======================
+docs/

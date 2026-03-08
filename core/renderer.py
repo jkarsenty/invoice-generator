@@ -1,18 +1,22 @@
 import json
+from dataclasses import asdict
 from pathlib import Path
-from jinja2 import Environment, FileSystemLoader
-from weasyprint import HTML
 
-from core.calculator import compute_items, compute_totals
-from core.formatter import eur
+from jinja2 import Environment, FileSystemLoader
+
 from core.loader import load_json
 from core.validate import (
     ValidationError,
-    as_dict,
-    load_and_validate,
     validate_client_data,
     validate_invoice_data,
     validate_issuer_data,
+)
+
+
+PDF_DEPENDENCY_ERROR = (
+    "Erreur PDF: dependances WeasyPrint manquantes. "
+    "Installez les bibliotheques systeme (ex: cairo, pango, gdk-pixbuf, libffi) "
+    "puis relancez la commande PDF."
 )
 
 
@@ -20,18 +24,15 @@ def render_invoice(
     invoice_path: Path,
     client_path: Path,
     output_pdf_path: Path,
-    base_dir: Path
+    base_dir: Path,
 ):
-    try:
-        issuer_obj, client_obj, invoice_obj = load_and_validate(
-            issuer_path=base_dir / "config" / "issuer.json",
-            client_path=client_path,
-            invoice_path=invoice_path,
-        )
-    except ValidationError as exc:
-        raise SystemExit(str(exc))
+    issuer_obj, client_obj, invoice_obj = _load_and_validate(
+        issuer_path=base_dir / "config" / "issuer.json",
+        client_path=client_path,
+        invoice_path=invoice_path,
+    )
 
-    _render_invoice(
+    return _render_invoice(
         issuer_obj=issuer_obj,
         client_obj=client_obj,
         invoice_obj=invoice_obj,
@@ -50,21 +51,16 @@ def render_invoice_data(
 ):
     try:
         issuer_raw = load_json(base_dir / "config" / "issuer.json")
-        issuer_obj = validate_issuer_data(issuer_raw, "config/issuer.json")
-        client_obj = validate_client_data(client_data, client_label)
-        invoice_obj = validate_invoice_data(invoice_data, invoice_label)
     except FileNotFoundError:
-        raise SystemExit(
-            str(ValidationError("config/issuer.json", "<fichier>", "introuvable"))
-        ) from None
+        raise ValidationError("config/issuer.json", "<fichier>", "introuvable") from None
     except json.JSONDecodeError:
-        raise SystemExit(
-            str(ValidationError("config/issuer.json", "<fichier>", "JSON invalide"))
-        ) from None
-    except ValidationError as exc:
-        raise SystemExit(str(exc))
+        raise ValidationError("config/issuer.json", "<fichier>", "JSON invalide") from None
 
-    _render_invoice(
+    issuer_obj = validate_issuer_data(issuer_raw, "config/issuer.json")
+    client_obj = validate_client_data(client_data, client_label)
+    invoice_obj = validate_invoice_data(invoice_data, invoice_label)
+
+    return _render_invoice(
         issuer_obj=issuer_obj,
         client_obj=client_obj,
         invoice_obj=invoice_obj,
@@ -80,9 +76,9 @@ def _render_invoice(
     output_pdf_path: Path,
     base_dir: Path,
 ):
-    issuer = as_dict(issuer_obj)
-    client = as_dict(client_obj)
-    invoice_data = as_dict(invoice_obj)
+    issuer = asdict(issuer_obj)
+    client = asdict(client_obj)
+    invoice_data = asdict(invoice_obj)
 
     items, total_ht = compute_items(invoice_data["items"])
     totals_raw = compute_totals(
@@ -124,10 +120,78 @@ def _render_invoice(
     )
 
     output_pdf_path.parent.mkdir(parents=True, exist_ok=True)
+    html_class = _load_weasyprint_html()
 
-    HTML(
+    html_class(
         string=html,
         base_url=str(base_dir),
     ).write_pdf(str(output_pdf_path))
 
-    print(f"Facture générée : {output_pdf_path}")
+    return output_pdf_path
+
+
+def _load_weasyprint_html():
+    try:
+        from weasyprint import HTML
+    except Exception as exc:  # pragma: no cover - depends on host system libs
+        raise RuntimeError(PDF_DEPENDENCY_ERROR) from exc
+    return HTML
+
+
+def _load_json_checked(path: Path, file_label: str) -> dict:
+    try:
+        data = load_json(path)
+    except FileNotFoundError:
+        raise ValidationError(file_label, "<fichier>", "introuvable") from None
+    except json.JSONDecodeError:
+        raise ValidationError(file_label, "<fichier>", "JSON invalide") from None
+
+    if not isinstance(data, dict):
+        raise ValidationError(file_label, "<racine>", "mauvais type (objet JSON attendu)")
+
+    return data
+
+
+def _load_and_validate(
+    issuer_path: Path,
+    client_path: Path,
+    invoice_path: Path,
+):
+    issuer_raw = _load_json_checked(issuer_path, "config/issuer.json")
+    client_raw = _load_json_checked(client_path, client_path.as_posix())
+    invoice_raw = _load_json_checked(invoice_path, invoice_path.as_posix())
+
+    issuer = validate_issuer_data(issuer_raw, "config/issuer.json")
+    client = validate_client_data(client_raw, client_path.as_posix())
+    invoice = validate_invoice_data(invoice_raw, invoice_path.as_posix())
+
+    return issuer, client, invoice
+
+
+def compute_items(items_raw):
+    items = []
+    total_ht = 0.0
+
+    for row in items_raw:
+        line_total = row["quantity"] * row["unit_price"]
+        total_ht += line_total
+
+        items.append({**row, "line_total": line_total})
+
+    return items, total_ht
+
+
+def compute_totals(total_ht, vat_rate):
+    vat_amount = total_ht * vat_rate / 100
+    total_ttc = total_ht + vat_amount
+
+    return {
+        "total_ht": total_ht,
+        "vat_rate": vat_rate,
+        "vat_amount": vat_amount,
+        "total_ttc": total_ttc,
+    }
+
+
+def eur(value: float) -> str:
+    return f"{value:,.2f}".replace(",", " ").replace(".", ",")
