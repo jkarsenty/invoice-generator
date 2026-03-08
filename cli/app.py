@@ -1,5 +1,5 @@
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import typer
@@ -123,6 +123,32 @@ def _prompt_date(label: str) -> str:
                 return value
             except ValueError:
                 print("Format attendu: YYYY-MM-DD ou YYYY/MM/DD")
+
+
+def _prompt_date_optional(label: str) -> str | None:
+    while True:
+        value = _prompt_optional(label)
+        if value is None:
+            return None
+        try:
+            datetime.strptime(value, "%Y-%m-%d")
+            return value
+        except ValueError:
+            try:
+                datetime.strptime(value, "%Y/%m/%d")
+                return value
+            except ValueError:
+                print("Format attendu: YYYY-MM-DD ou YYYY/MM/DD")
+
+
+def _default_due_date_from_issue_date(issue_date: str) -> str:
+    for fmt in ("%Y-%m-%d", "%Y/%m/%d"):
+        try:
+            issue = datetime.strptime(issue_date, fmt)
+            return (issue + timedelta(days=20)).strftime("%Y-%m-%d")
+        except ValueError:
+            continue
+    raise ValueError("issue_date invalide pour calcul de date d'echeance")
 
 
 def _prompt_int(label: str) -> int:
@@ -343,7 +369,9 @@ def json_new_command(
     number = _prompt_optional("Numero de facture")
     issue_date = _prompt_date("Date d'emission")
     service_date = _prompt_date("Date de service")
-    due_date = _prompt_date("Date d'echeance")
+    due_date = _prompt_date_optional("Date d'echeance")
+    if due_date is None:
+        due_date = _default_due_date_from_issue_date(issue_date)
     vat_rate = _prompt_vat_rate()
     items = _collect_items()
 
@@ -390,7 +418,7 @@ def json_new_command(
     print(f"Facture générée : {pdf_result['output_pdf']}")
 
 
-@app.command("list")
+@app.command("list", help="Lister les factures JSON presentes dans invoices/.")
 def list_command() -> None:
     result = list_invoices(INVOICES_DIR)
     entries = result["entries"]
@@ -404,7 +432,7 @@ def list_command() -> None:
         )
 
 
-@app.command("clients")
+@app.command("clients", help="Lister les clients valides et signaler les clients invalides.")
 def clients_command() -> None:
     clients, errors = _list_clients()
     _print_clients(clients, errors)

@@ -15,6 +15,7 @@ def _run(*args):
         check=False,
     )
 
+
 def test_help_works_without_pdf_runtime():
     result = _run("--help")
     assert result.returncode == 0
@@ -41,3 +42,11 @@ def test_json_validate_invalid_returns_1(tmp_path):
     result = _run("json", "validate", "--invoice", str(invalid))
     assert result.returncode == 1
     assert "JSON invalide" in result.stderr
+
+
+def test_help_contains_descriptions_for_clients_and_list():
+    result = _run("--help")
+    assert result.returncode == 0
+    assert "Lister les factures JSON presentes dans invoices/." in result.stdout
+    assert "Lister les clients valides et signaler les clients" in result.stdout
+    assert "invalides." in result.stdout
