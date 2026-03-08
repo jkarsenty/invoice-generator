@@ -73,6 +73,7 @@ output/*
 # ======================
 notes/
 notes_*
+docs/
 
 # ======================
 # Privacy stash
